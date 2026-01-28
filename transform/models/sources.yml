@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: supply_chain
+    database: SC_DATA
+    schema: RAW_DATA
+    tables:
+      - name: RAW_ORDERS
+      - name: RAW_PRODUCTS
+      - name: RAW_SUPPLIERS

@@ -1,0 +1,61 @@
+name: Supply Chain Daily Run
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # Runs at 7am UTC daily
+  workflow_dispatch:    # Manual trigger button
+
+jobs:
+  build_and_run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Data Ingestion (Python)
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+        run: python scripts/ingest.py
+
+      - name: Run dbt Transformation
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+        run: |
+          mkdir -p ~/.dbt
+          echo "transform:" > ~/.dbt/profiles.yml
+          echo "  target: dev" >> ~/.dbt/profiles.yml
+          echo "  outputs:" >> ~/.dbt/profiles.yml
+          echo "    dev:" >> ~/.dbt/profiles.yml
+          echo "      type: snowflake" >> ~/.dbt/profiles.yml
+          echo "      account: $SNOWFLAKE_ACCOUNT" >> ~/.dbt/profiles.yml
+          echo "      user: $SNOWFLAKE_USER" >> ~/.dbt/profiles.yml
+          echo "      password: $SNOWFLAKE_PASSWORD" >> ~/.dbt/profiles.yml
+          echo "      role: ACCOUNTADMIN" >> ~/.dbt/profiles.yml
+          echo "      warehouse: $SNOWFLAKE_WAREHOUSE" >> ~/.dbt/profiles.yml
+          echo "      database: $SNOWFLAKE_DATABASE" >> ~/.dbt/profiles.yml
+          echo "      schema: ANALYTICS_DEV" >> ~/.dbt/profiles.yml
+          echo "      threads: 4" >> ~/.dbt/profiles.yml
+          
+          cd transform
+          dbt deps
+          dbt build

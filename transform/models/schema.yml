@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  # --- Staging Tests ---
+  - name: stg_orders
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['completed', 'pending', 'returned', 'shipped']
+
+  - name: stg_products
+    columns:
+      - name: product_id
+        tests:
+          - unique
+          - not_null
+      - name: supplier_id
+        tests:
+          - not_null
+          # Relationship Test: Ensures every product maps to a real supplier
+          - relationships:
+              to: ref('stg_suppliers')
+              field: supplier_id
+
+  - name: stg_suppliers
+    columns:
+      - name: supplier_id
+        tests:
+          - unique
+          - not_null
+
+  # --- Marts Tests ---
+  - name: fct_supplier_performance
+    columns:
+      - name: supplier_id
+        tests:
+          - not_null
