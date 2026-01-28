@@ -5,6 +5,15 @@ on:
     - cron: '0 7 * * *' # Runs at 7am UTC daily
   workflow_dispatch:    # Manual trigger button
 
+# --- GLOBAL ENV VARIABLES (Available to all steps) ---
+env:
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+  SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+  SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+
 jobs:
   build_and_run:
     runs-on: ubuntu-latest
@@ -23,24 +32,20 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
+      # --- DEBUG STEP: This will tell us if GitHub can see the secret ---
+      - name: Verify Secrets
+        run: |
+          if [ -z "$SNOWFLAKE_USER" ]; then
+            echo "❌ ERROR: SNOWFLAKE_USER is empty! Check GitHub Secrets."
+            exit 1
+          else
+            echo "✅ SUCCESS: SNOWFLAKE_USER is found (Length: ${#SNOWFLAKE_USER})"
+          fi
+
       - name: Run Data Ingestion (Python)
-        env:
-          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
         run: python scripts/ingest.py
 
       - name: Run dbt Transformation
-        env:
-          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
         run: |
           mkdir -p ~/.dbt
           echo "transform:" > ~/.dbt/profiles.yml
